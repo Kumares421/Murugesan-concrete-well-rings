@@ -1,0 +1,16 @@
+{
+  "name": "wellrings",
+  "version": "1.0.0",
+  "description": "Murugesan Well Rings - Concrete precast rings and manual digging services website.",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx -y http-server -p 8080 -c-1",
+    "start": "npx -y http-server -p 8080 -c-1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

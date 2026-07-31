@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Portal | Murugesan Well Rings</title>
+  <meta name="description"
+    content="Admin Portal for Murugesan Well Rings. Authorized content management, product uploads, project portfolio updates, and entry deletion.">
+  <meta name="robots" content="noindex, nofollow">
+
+  <!-- Google Fonts & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- EmailJS integration -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+  <!-- Supabase JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <link rel="stylesheet" href="style.css?v=4">
+</head>
+
+<body>
+
+  <!-- Announcement Bar -->
+  <div class="announcement-bar" id="welcomeBar">
+    <div class="container welcome-container">
+      <span><span class="badge">Admin</span> Murugesan Well Rings - Content Management System</span>
+      <button class="close-welcome-btn" onclick="dismissWelcomeBar()"><i class="fas fa-times"></i></button>
+    </div>
+  </div>
+
+  <!-- Header & Navigation -->
+  <header class="header">
+    <div class="container nav-container">
+      <a href="index.html#home" class="logo-area">
+        <img src="logo.png" alt="Murugesan Well Rings Logo" class="site-logo">
+        <span class="logo-text">Murugesan<span class="highlight">WellRings</span></span>
+      </a>
+
+      <nav class="nav-menu" id="navMenu">
+        <a href="index.html#home" class="nav-link">Home</a>
+        <a href="index.html#about" class="nav-link">About & System Design</a>
+        <a href="index.html#materials" class="nav-link">Materials</a>
+        <a href="index.html#projects" class="nav-link">Projects</a>
+        <a href="index.html#services" class="nav-link">Services</a>
+        <a href="index.html#contact" class="nav-link">Contact Us</a>
+        <a href="admin.html" class="nav-link active admin-trigger"><i class="fas fa-user-cog"></i> Admin Portal</a>
+      </nav>
+
+      <div class="header-actions">
+        <button id="themeToggle" class="theme-toggle-btn" aria-label="Toggle theme">
+          <i class="fas fa-moon"></i>
+        </button>
+        <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open Menu">
+          <i class="fas fa-bars"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+  <div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
+
+  <!-- Admin Portal Main Section -->
+  <section id="profile" class="section profile-section" style="padding-top: 60px; min-height: 70vh;">
+    <div class="container">
+      <div class="section-header">
+        <span class="sub-heading">Admin Portal</span>
+        <h2 class="section-title">Manage Content & Upload Details</h2>
+        <div class="underline"></div>
+      </div>
+
+      <div class="profile-grid">
+        <div class="admin-wrapper glass-card" style="padding: 30px;">
+          <div id="loginForm" class="admin-login text-center">
+            <h3>Admin Access Restricted</h3>
+            <p style="margin-bottom: 20px; font-size: 0.95rem; color: var(--text-muted);">Please sign in with your authorized admin Gmail account to post updates or delete data entries.</p>
+            <button id="googleSignInBtn" type="button" class="btn btn-primary"
+              style="display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 12px 24px;">
+              <i class="fab fa-google"></i> Sign in with Google
+            </button>
+            <button id="googleSignOutBtn" type="button" class="btn btn-outline hidden"
+              style="margin-top: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 10px;">
+              <i class="fas fa-sign-out-alt"></i> Sign Out
+            </button>
+          </div>
+
+          <form id="uploadForm" class="admin-upload hidden" onsubmit="handleAdminUpload(event)">
+            <h3>Post New Entry / Update Details</h3>
+            <div class="form-group">
+              <label for="uploadType">Upload Category</label>
+              <select id="uploadType" required>
+                <option value="materials-only">Material Only</option>
+                <option value="installation">Material + Installation</option>
+                <option value="project">Project Portfolio</option>
+                <option value="service">Services Offered</option>
+                <option value="slideshow">Homepage Slideshow</option>
+              </select>
+            </div>
+            <div class="form-group" id="titleGroup">
+              <label for="itemTitle" id="titleLabel">Item Title</label>
+              <input type="text" id="itemTitle" placeholder="e.g., 6ft Heavy Concrete Ring" required>
+            </div>
+            <div class="form-group" id="priceGroup">
+              <label for="itemPrice" id="priceLabel">Price per piece (₹)</label>
+              <input type="number" id="itemPrice" placeholder="e.g., 500" min="0" step="1">
+            </div>
+            <div class="form-group" id="descGroup">
+              <label for="itemDesc" id="descLabel">Description</label>
+              <textarea id="itemDesc" placeholder="Details..." required></textarea>
+            </div>
+            <div class="form-group" id="metaGroup">
+              <label for="itemMeta" id="metaLabel">Metadata (Dimensions / Location)</label>
+              <input type="text" id="itemMeta" placeholder="e.g. 6ft x 1.5ft or Kovilpathagai" required>
+            </div>
+            <div class="form-group" id="imageGroup">
+              <label>Photo Source</label>
+              <div class="photo-source-toggle" style="display: flex; gap: 10px; margin-bottom: 12px;">
+                <button type="button" id="sourceUploadBtn" class="btn btn-sm btn-primary" onclick="setPhotoSource('upload')" style="margin: 0; padding: 6px 14px; font-size: 0.85rem; border-radius: 20px; cursor: pointer;">Upload File</button>
+                <button type="button" id="sourceUrlBtn" class="btn btn-sm btn-outline" onclick="setPhotoSource('url')" style="margin: 0; padding: 6px 14px; font-size: 0.85rem; border-radius: 20px; cursor: pointer;">Google Maps / Web URL</button>
+              </div>
+
+              <div id="imagePreviewContainer" class="hidden" style="margin-bottom: 12px; display: flex; align-items: center; gap: 15px;">
+                <img id="imagePreview" src="" alt="Preview" style="max-width: 80px; max-height: 80px; border-radius: 6px; object-fit: cover; border: 1px solid rgba(255,255,255,0.2);">
+                <span style="font-size: 0.85rem; color: var(--text-muted);">Current Photo</span>
+              </div>
+
+              <div id="uploadSourceContainer">
+                <input type="file" id="itemImage" accept="image/*" required>
+              </div>
+
+              <div id="urlSourceContainer" class="hidden">
+                <input type="url" id="itemImageUrl" placeholder="Paste Google Maps Photo URL or web image URL...">
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 6px; line-height: 1.4;">
+                  <i class="fas fa-info-circle"></i> To get the image URL from Google Maps: Open the photo on Google Maps, right-click it, and select <strong>"Copy image address"</strong>.
+                </p>
+              </div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 15px; width: 100%;">
+              <button type="submit" id="submitBtn" class="btn btn-primary" style="flex: 1; margin: 0;">Publish Update</button>
+              <button type="button" id="cancelEditBtn" class="btn btn-outline hidden" style="flex: 1; margin: 0;" onclick="cancelEditing()">Cancel Edit</button>
+            </div>
+          </form>
+          <div id="adminManageSection" class="admin-manage hidden"
+            style="margin-top: 40px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
+            <h3>Manage & Remove Data Entries</h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px;">Review items published in the database. Use the edit icon to update details or the trash icon to permanently remove an entry.</p>
+            <div id="adminEntriesList" class="entries-list">
+              <!-- Dynamically populated entries -->
+            </div>
+
+            <!-- Delivery Distance Rate Settings -->
+            <div class="delivery-config-card" style="margin-top: 35px; padding: 24px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px;">
+              <h3 style="margin-top: 0; display: flex; align-items: center; gap: 10px; font-size: 1.15rem; color: var(--text-color);">
+                <i class="fas fa-truck-loading" style="color: var(--primary-teal);"></i> Delivery Distance Rate Settings
+              </h3>
+              <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px; line-height: 1.4;">
+                Specify the delivery price charged per kilometer (km) from Avadi Yard. This rate updates real-time delivery estimates in the customer cart.
+              </p>
+              <div style="display: flex; gap: 12px; align-items: center; max-width: 420px; flex-wrap: wrap;">
+                <div style="position: relative; flex: 1; min-width: 140px;">
+                  <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-weight: 700;">₹</span>
+                  <input type="number" id="adminDeliveryRate" placeholder="e.g., 50" min="0" step="1" style="padding-left: 32px; width: 100%; font-size: 1rem; font-weight: 600;" onchange="saveDeliveryRateFromAdmin()">
+                </div>
+                <span style="font-weight: 600; color: var(--text-muted); font-size: 0.95rem;">/ km</span>
+                <button type="button" class="btn btn-sm btn-primary" onclick="saveDeliveryRateFromAdmin()" style="margin: 0; padding: 10px 18px;">
+                  <i class="fas fa-save"></i> Save Rate
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container footer-container">
+      <div class="footer-brand">
+        <span class="logo-text">Murugesan<span class="highlight">WellRings</span></span>
+        <p>Your premium supplier of reinforced concrete well rings and expert manual digging operations in Chennai.</p>
+      </div>
+      <div class="footer-links">
+        <h4>Quick Links</h4>
+        <a href="index.html#home">Home</a>
+        <a href="index.html#about">About</a>
+        <a href="index.html#materials">Materials</a>
+        <a href="index.html#projects">Projects</a>
+        <a href="index.html#services">Services</a>
+      </div>
+      <div class="footer-contacts">
+        <h4>Contact Numbers</h4>
+        <p><i class="fas fa-phone"></i> +91 99415 95850</p>
+        <p><i class="fas fa-phone"></i> +91 98405 04732</p>
+        <p><i class="fas fa-phone"></i> +91 88381 35069</p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2026 Murugesan Well Rings. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="script.js?v=4"></script>
+</body>
+</html>

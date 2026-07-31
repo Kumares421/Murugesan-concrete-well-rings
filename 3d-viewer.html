@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Concrete Precast Catalog & AI Estimator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0f172a; font-family: sans-serif; }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        /* UI Panel Overlay - Left */
+        #ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: rgba(20, 25, 30, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            width: 340px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+
+        /* AI Panel Overlay - Right */
+        #ai-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(147, 197, 253, 0.3);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            width: 350px;
+            max-height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+
+        /* 3D Overlay Labels */
+        .measurement-label {
+            position: absolute;
+            z-index: 5;
+            color: #00ffcc;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px #000;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            display: none; /* hidden by default */
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .line-horizontal { position: absolute; height: 2px; background-color: #00ffcc; pointer-events: none; z-index: 4; transform-origin: left center; display: none;}
+        .line-vertical { position: absolute; width: 2px; background-color: #00ffcc; pointer-events: none; z-index: 4; transform-origin: top center; display: none;}
+        
+        .annotation {
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #00ffcc;
+            padding: 4px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        .rod-annotation { color: #ffaa00; border-color: #ffaa00; }
+
+        /* Loader Animation */
+        .loader {
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <!-- Left Control Panel -->
+    <div id="ui-panel">
+        <div class="flex items-center justify-between border-b border-gray-600 pb-2 mb-4">
+            <h1 class="text-xl font-bold text-white">Precast 3D Viewer</h1>
+            <a href="index.html" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded font-semibold transition shadow"><i class="fas fa-arrow-left"></i> ← Main Site</a>
+        </div>
+        
+        <!-- Product Switcher -->
+        <div class="flex gap-2 mb-4">
+            <button id="btn-tab-post" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded text-sm font-bold transition shadow-md">Fencing Post</button>
+            <button id="btn-tab-ring" class="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 py-2 rounded text-sm font-bold transition shadow-md">Well Ring</button>
+        </div>
+
+        <!-- Dynamic Specs: FENCING POST -->
+        <div id="specs-post" class="block">
+            <h2 class="text-emerald-400 font-bold mb-1">Concrete Fencing Post</h2>
+            <p class="text-xs text-gray-300 mb-4">Solid Cast Post with Dual Iron Rod Reinforcement</p>
+            <div class="grid grid-cols-2 gap-4 text-sm bg-gray-800/50 p-3 rounded border border-gray-700">
+                <div><span class="text-gray-400 block text-xs">Total Height</span><span class="font-bold text-lg">7 ft <span class="text-xs font-normal">(84")</span></span></div>
+                <div><span class="text-gray-400 block text-xs">Thickness</span><span class="font-bold text-lg">4" x 4"</span></div>
+                <div class="col-span-2 border-t border-gray-600 pt-2 mt-1"><span class="text-gray-400 block text-xs">Internal Reinforcement</span><span class="font-bold text-orange-400">2x Vertical Iron Rods</span></div>
+            </div>
+        </div>
+
+        <!-- Dynamic Specs: WELL RING -->
+        <div id="specs-ring" class="hidden">
+            <h2 class="text-blue-400 font-bold mb-1">Concrete Well Ring</h2>
+            <p class="text-xs text-gray-300 mb-4">Interlocking System with Numrod Reinforcement</p>
+            
+            <div class="mb-4">
+                <label class="block text-xs font-medium text-gray-400 mb-1">Outer Diameter (OD):</label>
+                <select id="od-select" class="w-full bg-gray-700 text-white border border-gray-600 rounded p-2 text-sm focus:outline-none focus:border-blue-500">
+                    <option value="12">1 ft (12")</option>
+                    <option value="24">2 ft (24")</option>
+                    <option value="30">2.5 ft (30")</option>
+                    <option value="36" selected>3 ft (36")</option>
+                    <option value="48">4 ft (48")</option>
+                    <option value="51.6">4.3 ft (51.6")</option>
+                    <option value="60">5 ft (60")</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm bg-gray-800/50 p-3 rounded border border-gray-700">
+                <div><span class="text-gray-400 block text-xs">Fixed Height</span><span class="font-bold">11 inches</span></div>
+                <div><span class="text-gray-400 block text-xs">Wall Thickness</span><span class="font-bold">1.5 inches</span></div>
+                <div><span class="text-gray-400 block text-xs">Inner Diameter (ID)</span><span id="id-display" class="font-bold">33.0"</span></div>
+                <div><span class="text-gray-400 block text-xs">Reinforcement</span><span class="font-bold text-orange-400 text-xs">2x Numrod</span></div>
+            </div>
+        </div>
+        
+        <!-- Global Controls -->
+        <div class="mt-6 border-t border-gray-600 pt-4">
+            <h3 class="text-xs text-gray-400 uppercase font-bold mb-2">View Controls</h3>
+            <div class="flex items-center justify-between bg-gray-800/80 p-2 rounded border border-gray-700 mb-2">
+                <span class="text-sm font-medium">360° Auto-Rotate</span>
+                <button id="btn-rotate" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1 rounded text-sm transition font-bold shadow-md">Stop</button>
+            </div>
+            
+            <div id="control-camera-ring" class="hidden flex items-center justify-between bg-gray-800/80 p-2 rounded border border-gray-700 mb-2">
+                <span class="text-sm font-medium">Camera Angle</span>
+                <button id="btn-camera" class="bg-purple-600 hover:bg-purple-500 text-white px-4 py-1 rounded text-sm transition font-bold shadow-md">Horizontal</button>
+            </div>
+
+            <div class="flex items-center justify-between bg-gray-800/80 p-2 rounded border border-gray-700">
+                <span class="text-sm font-medium">X-Ray (See Inside)</span>
+                <input type="checkbox" id="xray-toggle" class="w-5 h-5 accent-blue-500" checked>
+            </div>
+        </div>
+
+        <div class="mt-4 text-xs text-gray-400 italic">
+            * Left click & drag to orbit, scroll wheel to zoom in/out.
+        </div>
+    </div>
+
+    <!-- Right AI Panel -->
+    <div id="ai-panel">
+        <h2 class="text-xl font-bold text-blue-400 mb-1 flex items-center gap-2">
+            AI Consultant ✨
+        </h2>
+        <p class="text-xs text-gray-400 mb-4 border-b border-gray-700 pb-2">Powered by Gemini AI</p>
+        
+        <!-- Contextual Estimator -->
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-300 mb-1">Material Estimator:</label>
+            
+            <!-- Fencing Post Estimator Inputs -->
+            <div id="est-inputs-post" class="flex flex-col gap-2">
+                <input type="number" id="ai-fence-length" class="w-full bg-gray-800 border border-gray-600 text-white p-2 rounded text-sm focus:outline-none focus:border-emerald-500" placeholder="Fence Length (e.g. 100 ft)">
+                <input type="number" id="ai-fence-corners" class="w-full bg-gray-800 border border-gray-600 text-white p-2 rounded text-sm focus:outline-none focus:border-emerald-500" placeholder="Number of Corners (e.g. 4)">
+            </div>
+
+            <!-- Well Ring Estimator Inputs -->
+            <div id="est-inputs-ring" class="hidden flex flex-col gap-2">
+                <input type="number" id="ai-well-depth" class="w-full bg-gray-800 border border-gray-600 text-white p-2 rounded text-sm focus:outline-none focus:border-blue-500" placeholder="Total Well Depth (e.g. 25 ft)">
+            </div>
+
+            <button id="btn-estimate" class="w-full bg-blue-600 hover:bg-blue-500 text-white mt-2 px-3 py-2 rounded font-medium transition shadow">Calculate Materials ✨</button>
+        </div>
+
+        <!-- Q&A -->
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-300 mb-1">Ask an engineering question:</label>
+            <textarea id="ai-question" class="w-full bg-gray-800 border border-gray-600 text-white p-2 rounded focus:outline-none focus:border-purple-500 text-sm mb-2" rows="2" placeholder="Type your question here..."></textarea>
+            <button id="btn-ask" class="w-full bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded font-medium transition shadow">Ask Expert ✨</button>
+        </div>
+
+        <!-- Response Area -->
+        <div id="ai-response-container" class="flex-1 overflow-y-auto bg-gray-900/60 p-3 rounded-lg border border-gray-700 relative">
+            <div id="ai-response" class="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+                Welcome! Use the tools above to calculate materials or ask technical questions about the currently selected precast model.
+            </div>
+        </div>
+    </div>
+
+    <!-- 3D Canvas -->
+    <div id="canvas-container"></div>
+
+    <!-- DOM Overlays for POST -->
+    <div id="label-p-height" class="measurement-label"><div class="annotation">H: 7 ft (84")</div></div>
+    <div id="label-p-width" class="measurement-label"><div class="annotation">W: 4"</div></div>
+    <div id="label-p-rod" class="measurement-label"><div class="annotation rod-annotation">2x Iron Rods</div></div>
+    <div id="line-p-height" class="line-vertical"></div>
+    <div id="line-p-width" class="line-horizontal"></div>
+
+    <!-- DOM Overlays for RING -->
+    <div id="label-r-height" class="measurement-label"><div class="annotation">H: 11"</div></div>
+    <div id="label-r-od" class="measurement-label"><div class="annotation" id="text-r-od">OD: 36"</div></div>
+    <div id="label-r-thick" class="measurement-label"><div class="annotation">T: 1.5"</div></div>
+    <div id="label-r-rod" class="measurement-label"><div class="annotation rod-annotation">Aluminum Steel Numrod</div></div>
+    <div id="line-r-height" class="line-vertical"></div>
+    <div id="line-r-od" class="line-horizontal"></div>
+
+    <!-- Three.js Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // ==========================================
+        // Global State & UI Management
+        // ==========================================
+        let currentProduct = 'post'; // 'post' or 'ring'
+
+        // UI Elements
+        const tabPost = document.getElementById('btn-tab-post');
+        const tabRing = document.getElementById('btn-tab-ring');
+        const specsPost = document.getElementById('specs-post');
+        const specsRing = document.getElementById('specs-ring');
+        const estInputsPost = document.getElementById('est-inputs-post');
+        const estInputsRing = document.getElementById('est-inputs-ring');
+        const ctrlCameraRing = document.getElementById('control-camera-ring');
+        const xrayToggle = document.getElementById('xray-toggle');
+        const btnRotate = document.getElementById('btn-rotate');
+        const btnCamera = document.getElementById('btn-camera');
+        const odSelect = document.getElementById('od-select');
+        const idDisplay = document.getElementById('id-display');
+
+        // Post Labels
+        const lblPHeight = document.getElementById('label-p-height');
+        const lblPWidth = document.getElementById('label-p-width');
+        const lblPRod = document.getElementById('label-p-rod');
+        const linPHeight = document.getElementById('line-p-height');
+        const linPWidth = document.getElementById('line-p-width');
+
+        // Ring Labels
+        const lblRHeight = document.getElementById('label-r-height');
+        const lblROd = document.getElementById('label-r-od');
+        const textROd = document.getElementById('text-r-od');
+        const lblRThick = document.getElementById('label-r-thick');
+        const lblRRod = document.getElementById('label-r-rod');
+        const linRHeight = document.getElementById('line-r-height');
+        const linROd = document.getElementById('line-r-od');
+
+        function hideAllLabels() {
+            [lblPHeight, lblPWidth, lblPRod, linPHeight, linPWidth, 
+             lblRHeight, lblROd, lblRThick, lblRRod, linRHeight, linROd].forEach(el => {
+                el.style.display = 'none';
+            });
+        }
+
+        tabPost.addEventListener('click', () => setProduct('post'));
+        tabRing.addEventListener('click', () => setProduct('ring'));
+        
+        odSelect.addEventListener('change', (e) => {
+            if(currentProduct === 'ring') buildRingModel(parseFloat(e.target.value));
+        });
+
+        function setProduct(product) {
+            currentProduct = product;
+            hideAllLabels();
+            aiResponse.innerHTML = `Switched to ${product === 'post' ? 'Fencing Post' : 'Well Ring'} mode. Ask a question or calculate materials!`;
+
+            if (product === 'post') {
+                // UI Toggles
+                tabPost.className = "flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded text-sm font-bold transition shadow-md";
+                tabRing.className = "flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 py-2 rounded text-sm font-bold transition shadow-md";
+                btnRotate.className = controls.autoRotate ? 'bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1 rounded text-sm transition font-bold shadow-md' : 'bg-gray-600 hover:bg-gray-500 text-white px-4 py-1 rounded text-sm transition shadow-md';
+                
+                specsPost.classList.replace('hidden', 'block');
+                specsRing.classList.replace('block', 'hidden');
+                estInputsPost.classList.replace('hidden', 'flex');
+                estInputsRing.classList.replace('flex', 'hidden');
+                ctrlCameraRing.classList.replace('flex', 'hidden');
+
+                // Limit camera zoom distances for Fencing Post
+                controls.minDistance = 30;
+                controls.maxDistance = 150;
+
+                // Build 3D
+                buildPostModel();
+            } else {
+                // UI Toggles
+                tabRing.className = "flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded text-sm font-bold transition shadow-md";
+                tabPost.className = "flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 py-2 rounded text-sm font-bold transition shadow-md";
+                btnRotate.className = controls.autoRotate ? 'bg-blue-600 hover:bg-blue-500 text-white px-4 py-1 rounded text-sm transition font-bold shadow-md' : 'bg-gray-600 hover:bg-gray-500 text-white px-4 py-1 rounded text-sm transition shadow-md';
+                
+                specsRing.classList.replace('hidden', 'block');
+                specsPost.classList.replace('block', 'hidden');
+                estInputsRing.classList.replace('hidden', 'flex');
+                estInputsPost.classList.replace('flex', 'hidden');
+                ctrlCameraRing.classList.replace('hidden', 'flex');
+
+                // Limit camera zoom distances for Well Ring
+                controls.minDistance = 15;
+                controls.maxDistance = 100;
+
+                // Build 3D
+                buildRingModel(parseFloat(odSelect.value));
+            }
+        }
+
+        // ==========================================
+        // Gemini API Integration (AI Consultant)
+        // ==========================================
+        const apiKey = ""; // Set your API key here or fetch dynamically
+
+        const btnEstimate = document.getElementById('btn-estimate');
+        const btnAsk = document.getElementById('btn-ask');
+        const aiResponse = document.getElementById('ai-response');
+        const aiResponseContainer = document.getElementById('ai-response-container');
+
+        async function callGemini(prompt, systemInstruction) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] }
+            };
+
+            const retries = 5;
+            const delays = [1000, 2000, 4000, 8000, 16000];
+
+            for (let i = 0; i <= retries; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const data = await response.json();
+                    return data.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
+                } catch (e) {
+                    if (i === retries) return "Error connecting to AI. Please try again later.";
+                    await new Promise(resolve => setTimeout(resolve, delays[i]));
+                }
+            }
+        }
+
+        function setAILoading() {
+            aiResponse.innerHTML = `<span class="loader"></span> Generating response... ✨`;
+            aiResponseContainer.scrollTop = 0;
+            btnEstimate.disabled = true;
+            btnAsk.disabled = true;
+            btnEstimate.classList.add('opacity-50', 'cursor-not-allowed');
+            btnAsk.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        function clearAILoading(text) {
+            const formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white">$1</strong>');
+            aiResponse.innerHTML = formattedText;
+            btnEstimate.disabled = false;
+            btnAsk.disabled = false;
+            btnEstimate.classList.remove('opacity-50', 'cursor-not-allowed');
+            btnAsk.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        btnEstimate.addEventListener('click', async () => {
+            setAILoading();
+            
+            let systemInstruction = "";
+            let prompt = "";
+
+            if (currentProduct === 'post') {
+                const length = document.getElementById('ai-fence-length').value;
+                const corners = document.getElementById('ai-fence-corners').value || 0;
+                
+                if(!length || length <= 0) {
+                    clearAILoading("Please enter a valid fence length.");
+                    return;
+                }
+                
+                systemInstruction = "You are a professional construction estimator specializing in concrete fencing. Provide extremely brief, bulleted calculations focusing strictly on post counts. Give only the final numbers and main points.";
+                prompt = `Calculate the exact number of concrete 7ft tall fencing posts needed for a fence that is ${length} feet long with ${corners} corners. 
+                Apply these specific installation rules:
+                - Standard gap between line posts: 8 feet.
+                - Start of the fence line: Requires 2 posts (1 main + 1 support brace).
+                - End of the fence line: Requires 2 posts (1 main + 1 support brace).
+                - Corners: Each corner requires 3 posts (1 main + 2 support braces).
+                
+                Provide a detailed breakdown of the calculation:
+                1. Number of posts for straight lines based on the 8ft gap.
+                2. Number of extra support posts for start, end, and corners.
+                3. Grand total of posts needed.`;
+
+            } else if (currentProduct === 'ring') {
+                const depth = document.getElementById('ai-well-depth').value;
+                const od = document.getElementById('od-select');
+                const odText = od.options[od.selectedIndex].text;
+
+                if(!depth || depth <= 0) {
+                    clearAILoading("Please enter a valid well depth.");
+                    return;
+                }
+
+                systemInstruction = "You are a civil engineer specializing in precast concrete well construction. Provide extremely brief, bulleted materials estimations. Give only the main points.";
+                prompt = `A client is building a well that is ${depth} feet deep using precast concrete well rings.
+                The selected well ring has an Outer Diameter of ${odText}.
+                Each ring is exactly 11 inches tall. When stacked, a 1-inch layer of mortar/tile is placed between each ring, making the effective stacked height of one tier exactly 12 inches (1 foot).
+                
+                Please calculate:
+                1. The total number of concrete rings required to reach the ${depth} foot depth.
+                2. The structural benefit of the dual aluminum/steel numrod reinforcement embedded in the top and bottom of each ring during this deep stacking.
+                Keep the response concise and formatted with bullet points.`;
+            }
+
+            const result = await callGemini(prompt, systemInstruction);
+            clearAILoading(result);
+        });
+
+        btnAsk.addEventListener('click', async () => {
+            const question = document.getElementById('ai-question').value;
+            if(!question.trim()) {
+                aiResponse.innerHTML = "Please type a question first.";
+                return;
+            }
+
+            setAILoading();
+
+            const systemInstruction = "You are a master mason and civil engineer expert in precast concrete. Provide extremely brief, bulleted answers giving only the main points. The user is asking about the 3D model they are viewing.";
+            
+            let context = "";
+            if (currentProduct === 'post') {
+                context = "The user is looking at a 7-foot tall, 4x4 inch thick solid concrete fencing post reinforced with two vertical iron rods.";
+            } else {
+                const od = document.getElementById('od-select');
+                context = `The user is looking at a hollow concrete well ring with an outer diameter of ${od.options[od.selectedIndex].text}, a fixed height of 11 inches, a wall thickness of 1.5 inches, reinforced with aluminum steel numrods on top and bottom.`;
+            }
+            
+            const prompt = `Context: ${context}\nQuestion from user: "${question}"\nProvide a safe, practical, and extremely brief technical engineering answer based on these dimensions. Use bullet points.`;
+
+            const result = await callGemini(prompt, systemInstruction);
+            clearAILoading(result);
+        });
+
+
+        // ==========================================
+        // 3D Scene Initialization
+        // ==========================================
+        let scene, camera, renderer, controls;
+        let activeGroup = null; // Holds the current 3D object group
+        
+        // Post Constants
+        const POST_H = 84; 
+        const POST_W = 4;
+        const POST_ROD_R = 0.25;
+        const POST_ROD_L = 80;
+
+        // Ring Constants
+        const RING_H = 11;
+        const RING_T = 1.5;
+        const RING_ROD_R = 0.35;
+
+        init3D();
+        animate3D();
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color('#0f172a');
+            scene.fog = new THREE.FogExp2('#0f172a', 0.003);
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI; // Full rotation
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 2.0;
+            controls.enablePan = false; // Keep the model locked in the center
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(30, 100, 50);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            scene.add(dirLight);
+            
+            const fillLight = new THREE.DirectionalLight(0x90b0d0, 0.3);
+            fillLight.position.set(-50, 0, -50);
+            scene.add(fillLight);
+
+            // Universal Floor
+            const floorGeo = new THREE.PlaneGeometry(500, 500);
+            const floorMat = new THREE.MeshStandardMaterial({ color: '#020617', roughness: 0.9, metalness: 0.1 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = -POST_H/2; // Will adjust dynamically
+            floor.name = "Floor";
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // Universal Grid
+            const gridHelper = new THREE.GridHelper(100, 20, 0x333333, 0x1a1a1a);
+            gridHelper.position.y = -POST_H/2 + 0.01;
+            gridHelper.name = "Grid";
+            scene.add(gridHelper);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // Global Control Listeners
+            btnRotate.addEventListener('click', () => {
+                controls.autoRotate = !controls.autoRotate;
+                const activeColor = currentProduct === 'post' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-blue-600 hover:bg-blue-500';
+                if (controls.autoRotate) {
+                    btnRotate.innerText = 'Stop';
+                    btnRotate.className = `${activeColor} text-white px-4 py-1 rounded text-sm transition font-bold shadow-md`;
+                } else {
+                    btnRotate.innerText = 'Start';
+                    btnRotate.className = 'bg-gray-600 hover:bg-gray-500 text-white px-4 py-1 rounded text-sm transition shadow-md';
+                }
+            });
+
+            xrayToggle.addEventListener('change', (e) => {
+                if (activeGroup) {
+                    activeGroup.children.forEach(child => {
+                        if (child.userData.isConcrete) {
+                            child.material.transparent = e.target.checked;
+                            // Post gets more transparent because it's thicker solid block
+                            child.material.opacity = e.target.checked ? (currentProduct === 'post' ? 0.25 : 0.35) : 1.0;
+                            child.material.depthWrite = !e.target.checked;
+                        }
+                    });
+                }
+                
+                if (currentProduct === 'post') {
+                    lblPRod.style.visibility = e.target.checked ? 'visible' : 'hidden';
+                }
+                // Ring rods are always partially visible on edges, but can hide label if desired. Keeping visible for ring.
+            });
+
+            // Ring Specific Camera Toggle
+            let isHorizontal = false;
+            btnCamera.addEventListener('click', () => {
+                if(currentProduct !== 'ring') return;
+                isHorizontal = !isHorizontal;
+                const ud = activeGroup ? activeGroup.userData : { outRad: 18, h: 11 };
+                const maxDimension = Math.max(ud.outRad * 2, ud.h);
+                if (isHorizontal) {
+                    camera.position.set(maxDimension * 1.5, 0, maxDimension * 1.5);
+                    btnCamera.innerText = 'Standard Angle';
+                    btnCamera.className = 'bg-gray-600 hover:bg-gray-500 text-white px-4 py-1 rounded text-sm transition shadow-md';
+                } else {
+                    camera.position.set(maxDimension * 1.2, maxDimension * 0.8, maxDimension * 1.2);
+                    btnCamera.innerText = 'Horizontal';
+                    btnCamera.className = 'bg-purple-600 hover:bg-purple-500 text-white px-4 py-1 rounded text-sm transition font-bold shadow-md';
+                }
+                controls.target.set(0, 0, 0);
+                controls.update();
+            });
+
+            // Initialize default state
+            setProduct('post');
+        }
+
+        // --- Textures ---
+        function getConcreteTexture(stretchY = 1) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#9ca3af'; 
+            ctx.fillRect(0, 0, 512, 512);
+            for(let i=0; i<30000; i++) {
+                const shade = 100 + Math.random() * 80;
+                ctx.fillStyle = `rgba(${shade},${shade},${shade}, 0.8)`;
+                ctx.fillRect(Math.random() * 512, Math.random() * 512, 1.5, 1.5);
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(1, stretchY);
+            return tex;
+        }
+
+        // Iron Rod texture with high-fidelity detailing
+        function getIronTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#3f3f46'; ctx.fillRect(0, 0, 128, 128);
+            for(let i=0; i<4000; i++) {
+                const r = 40+Math.random()*40, g = 30+Math.random()*30, b = 30+Math.random()*20;
+                ctx.fillStyle = `rgba(${r},${g},${b}, 0.5)`;
+                ctx.fillRect(Math.random()*128, Math.random()*128, 2, 2);
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        // Concentric ring / torus texture with spacing ridges
+        function getNumrodTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 128, 128);
+            ctx.fillStyle = '#fff';
+            for(let x=0; x<128; x+=16) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x+10, 128);
+                ctx.lineWidth = 4; ctx.strokeStyle = '#fff'; ctx.stroke();
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(60, 1);
+            return tex;
+        }
+
+        // --- Builders ---
+        function clearCurrentModel() {
+            if (activeGroup) scene.remove(activeGroup);
+            activeGroup = new THREE.Group();
+            scene.add(activeGroup);
+            hideAllLabels();
+        }
+
+        function buildPostModel() {
+            clearCurrentModel();
+
+            // Adjust environment
+            const floor = scene.getObjectByName("Floor");
+            const grid = scene.getObjectByName("Grid");
+            if(floor) floor.position.y = -POST_H / 2;
+            if(grid) grid.position.y = -POST_H / 2 + 0.01;
+
+            // Camera setup for Post
+            camera.position.set(40, 40, 80);
+            controls.target.set(0, 0, 0);
+            controls.update();
+
+            const isXray = xrayToggle.checked;
+
+            // Concrete Block
+            const cGeo = new THREE.BoxGeometry(POST_W, POST_H, POST_W);
+            const cMat = new THREE.MeshStandardMaterial({
+                color: 0xcccccc, map: getConcreteTexture(10),
+                roughness: 0.85, transparent: isXray, opacity: isXray ? 0.25 : 1.0, depthWrite: !isXray
+            });
+            const mesh = new THREE.Mesh(cGeo, cMat);
+            mesh.userData.isConcrete = true;
+            mesh.castShadow = true; mesh.receiveShadow = true;
+            activeGroup.add(mesh);
+
+            // Iron Rods
+            const rGeo = new THREE.CylinderGeometry(POST_ROD_R, POST_ROD_R, POST_ROD_L, 16);
+            const rMat = new THREE.MeshStandardMaterial({ color: 0x555555, map: getIronTexture(), roughness: 0.9, metalness: 0.6 });
+            
+            const rod1 = new THREE.Mesh(rGeo, rMat); rod1.position.set(-1, 0, 0); rod1.castShadow = true;
+            const rod2 = new THREE.Mesh(rGeo, rMat); rod2.position.set(1, 0, 0); rod2.castShadow = true;
+            
+            activeGroup.add(rod1);
+            activeGroup.add(rod2);
+            
+            lblPRod.style.visibility = isXray ? 'visible' : 'hidden';
+        }
+
+        function buildRingModel(odInches) {
+            clearCurrentModel();
+
+            // Adjust environment
+            const floor = scene.getObjectByName("Floor");
+            const grid = scene.getObjectByName("Grid");
+            if(floor) floor.position.y = -RING_H / 2;
+            if(grid) grid.position.y = -RING_H / 2 + 0.01;
+
+            const idInches = odInches - (2 * RING_T);
+            const outerRadius = odInches / 2;
+            const innerRadius = idInches / 2;
+            
+            idDisplay.innerText = `${idInches.toFixed(1)}"`;
+            textROd.innerText = `OD: ${odInches >= 12 && odInches % 12 === 0 ? odInches/12 + "' ("+odInches+"\")" : odInches+"\""}`;
+
+            // Camera setup for Ring
+            const maxDimension = Math.max(odInches, RING_H);
+            camera.position.set(maxDimension * 1.2, maxDimension * 0.8, maxDimension * 1.2);
+            controls.target.set(0, 0, 0);
+            
+            // Reset horizontal button if needed
+            btnCamera.innerText = 'Horizontal';
+            btnCamera.className = 'bg-purple-600 hover:bg-purple-500 text-white px-4 py-1 rounded text-sm transition font-bold shadow-md';
+            
+            controls.update();
+
+            const isXray = xrayToggle.checked;
+
+            // Concrete Ring
+            const pts = [];
+            pts.push(new THREE.Vector2(innerRadius, -RING_H/2));
+            pts.push(new THREE.Vector2(outerRadius, -RING_H/2));
+            pts.push(new THREE.Vector2(outerRadius, RING_H/2));
+            pts.push(new THREE.Vector2(innerRadius, RING_H/2));
+            pts.push(new THREE.Vector2(innerRadius, -RING_H/2));
+
+            const cGeo = new THREE.LatheGeometry(pts, 64);
+            const cMat = new THREE.MeshStandardMaterial({
+                color: 0x999999, map: getConcreteTexture(2),
+                roughness: 0.9, transparent: isXray, opacity: isXray ? 0.35 : 1.0, depthWrite: !isXray
+            });
+            const mesh = new THREE.Mesh(cGeo, cMat);
+            mesh.userData.isConcrete = true;
+            mesh.castShadow = true; mesh.receiveShadow = true;
+            activeGroup.add(mesh);
+
+            // Numrods
+            const rodRadiusCenter = innerRadius + (RING_T / 2);
+            const rGeo = new THREE.TorusGeometry(rodRadiusCenter, RING_ROD_R, 16, 100);
+            const rMat = new THREE.MeshStandardMaterial({
+                color: 0xcccccc, metalness: 0.8, roughness: 0.3,
+                bumpMap: getNumrodTexture(), bumpScale: 0.05
+            });
+
+            const topRod = new THREE.Mesh(rGeo, rMat);
+            topRod.rotation.x = Math.PI / 2; topRod.position.y = (RING_H/2) - 2; topRod.castShadow = true;
+            
+            const bottomRod = new THREE.Mesh(rGeo, rMat);
+            bottomRod.rotation.x = Math.PI / 2; bottomRod.position.y = (RING_H/2) - 10; bottomRod.castShadow = true;
+
+            activeGroup.add(topRod);
+            activeGroup.add(bottomRod);
+
+            activeGroup.userData = { outRad: outerRadius };
+        }
+
+        // --- View & Render Loop ---
+        function toScreenPosition(vector3, camera) {
+            const vec = vector3.clone().project(camera);
+            return {
+                x: (vec.x * window.innerWidth / 2) + window.innerWidth / 2,
+                y: -(vec.y * window.innerHeight / 2) + window.innerHeight / 2,
+                z: vec.z
+            };
+        }
+
+        function updateLabels() {
+            if (!activeGroup) return;
+
+            if (currentProduct === 'post') {
+                // UPDATE POST LABELS
+                const pTop = new THREE.Vector3(POST_W/2 + 3, POST_H/2, 0);
+                const pBot = new THREE.Vector3(POST_W/2 + 3, -POST_H/2, 0);
+                const pMid = new THREE.Vector3(POST_W/2 + 5, 0, 0);
+                
+                const sTop = toScreenPosition(pTop, camera);
+                const sBot = toScreenPosition(pBot, camera);
+                const sMid = toScreenPosition(pMid, camera);
+
+                if (sTop.z < 1) {
+                    lblPHeight.style.display = 'flex'; linPHeight.style.display = 'block';
+                    lblPHeight.style.left = `${sMid.x + 20}px`; lblPHeight.style.top = `${sMid.y}px`;
+                    linPHeight.style.left = `${sTop.x}px`; linPHeight.style.top = `${sTop.y}px`;
+                    linPHeight.style.height = `${sBot.y - sTop.y}px`;
+                } else {
+                    lblPHeight.style.display = 'none'; linPHeight.style.display = 'none';
+                }
+
+                const wLeft = new THREE.Vector3(-POST_W/2, POST_H/2 + 2, 0);
+                const wRight = new THREE.Vector3(POST_W/2, POST_H/2 + 2, 0);
+                const wMid = new THREE.Vector3(0, POST_H/2 + 2, 0);
+
+                const swLeft = toScreenPosition(wLeft, camera);
+                const swRight = toScreenPosition(wRight, camera);
+                const swMid = toScreenPosition(wMid, camera);
+
+                if(swLeft.z < 1 && swRight.z < 1) {
+                    lblPWidth.style.display = 'flex'; linPWidth.style.display = 'block';
+                    lblPWidth.style.left = `${swMid.x}px`; lblPWidth.style.top = `${swMid.y - 20}px`;
+                    linPWidth.style.left = `${swLeft.x}px`; linPWidth.style.top = `${swLeft.y}px`;
+                    const dx = swRight.x - swLeft.x, dy = swRight.y - swLeft.y;
+                    linPWidth.style.width = `${Math.sqrt(dx*dx + dy*dy)}px`;
+                    linPWidth.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
+                } else {
+                    lblPWidth.style.display = 'none'; linPWidth.style.display = 'none';
+                }
+
+                const sRod = toScreenPosition(new THREE.Vector3(0, 10, 0), camera);
+                if(sRod.z < 1) {
+                    lblPRod.style.display = 'flex';
+                    lblPRod.style.left = `${sRod.x - 60}px`; lblPRod.style.top = `${sRod.y}px`;
+                } else {
+                    lblPRod.style.display = 'none';
+                }
+
+            } else if (currentProduct === 'ring') {
+                // UPDATE RING LABELS
+                const ud = activeGroup.userData;
+                const pTop = new THREE.Vector3(ud.outRad + 2, RING_H/2, 0);
+                const pBot = new THREE.Vector3(ud.outRad + 2, -RING_H/2, 0);
+                const pMid = new THREE.Vector3(ud.outRad + 4, 0, 0);
+                
+                const sTop = toScreenPosition(pTop, camera);
+                const sBot = toScreenPosition(pBot, camera);
+                const sMid = toScreenPosition(pMid, camera);
+
+                if (sTop.z < 1) {
+                    lblRHeight.style.display = 'flex'; linRHeight.style.display = 'block';
+                    lblRHeight.style.left = `${sMid.x}px`; lblRHeight.style.top = `${sMid.y}px`;
+                    linRHeight.style.left = `${sTop.x}px`; linRHeight.style.top = `${sTop.y}px`;
+                    linRHeight.style.height = `${sBot.y - sTop.y}px`;
+                } else {
+                    lblRHeight.style.display = 'none'; linRHeight.style.display = 'none';
+                }
+
+                const oLeft = new THREE.Vector3(-ud.outRad, RING_H/2 + 2, 0);
+                const oRight = new THREE.Vector3(ud.outRad, RING_H/2 + 2, 0);
+                const oMid = new THREE.Vector3(0, RING_H/2 + 2, 0);
+
+                const soLeft = toScreenPosition(oLeft, camera);
+                const soRight = toScreenPosition(oRight, camera);
+                const soMid = toScreenPosition(oMid, camera);
+
+                if(soLeft.z < 1 && soRight.z < 1) {
+                    lblROd.style.display = 'flex'; linROd.style.display = 'block';
+                    lblROd.style.left = `${soMid.x}px`; lblROd.style.top = `${soMid.y - 20}px`;
+                    linROd.style.left = `${soLeft.x}px`; linROd.style.top = `${soLeft.y}px`;
+                    const dx = soRight.x - soLeft.x, dy = soRight.y - soLeft.y;
+                    linROd.style.width = `${Math.sqrt(dx*dx + dy*dy)}px`;
+                    linROd.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
+                } else {
+                    lblROd.style.display = 'none'; linROd.style.display = 'none';
+                }
+
+                const sThick = toScreenPosition(new THREE.Vector3(ud.outRad - RING_T/2, RING_H/2, ud.outRad - RING_T/2), camera);
+                if(sThick.z < 1) {
+                    lblRThick.style.display = 'flex';
+                    lblRThick.style.left = `${sThick.x + 40}px`; lblRThick.style.top = `${sThick.y - 20}px`;
+                } else {
+                    lblRThick.style.display = 'none';
+                }
+
+                const sRod = toScreenPosition(new THREE.Vector3(0, (RING_H/2) - 2, ud.outRad - RING_T/2), camera);
+                if(sRod.z < 1) {
+                    lblRRod.style.display = 'flex';
+                    lblRRod.style.left = `${sRod.x}px`; lblRRod.style.top = `${sRod.y - 50}px`;
+                } else {
+                    lblRRod.style.display = 'none';
+                }
+            }
+        }
+
+        // Window message listener to support communication with main page controller
+        window.addEventListener('message', (event) => {
+            const { action, value, type } = event.data;
+            if (action === 'SWITCH_MODEL') {
+                if (type === 'well_ring') {
+                    setProduct('ring');
+                } else if (type === 'fencing_post') {
+                    setProduct('post');
+                }
+            } else if (action === 'SET_ROTATION') {
+                controls.autoRotate = value;
+                const activeColor = currentProduct === 'post' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-blue-600 hover:bg-blue-500';
+                if (controls.autoRotate) {
+                    btnRotate.innerText = 'Stop';
+                    btnRotate.className = `${activeColor} text-white px-4 py-1 rounded text-sm transition font-bold shadow-md`;
+                } else {
+                    btnRotate.innerText = 'Start';
+                    btnRotate.className = 'bg-gray-600 hover:bg-gray-500 text-white px-4 py-1 rounded text-sm transition shadow-md';
+                }
+            } else if (action === 'TOGGLE_XRAY') {
+                xrayToggle.checked = value;
+                xrayToggle.dispatchEvent(new Event('change'));
+            } else if (action === 'SET_PLAYING') {
+                if (value) {
+                    // Resume render loops
+                } else {
+                    // Pause
+                }
+            }
+        });
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            controls.update(); 
+            updateLabels();
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
