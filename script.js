@@ -1526,36 +1526,44 @@ async function requestCustomerEmailOtp(e) {
   window.pendingEmail = email;
   window.pendingName = name || email.split('@')[0];
 
-  // Generate real dynamic 4-digit verification code
+  // Generate dynamic 4-digit verification code
   window.generatedOtp = Math.floor(1000 + Math.floor(Math.random() * 9000)).toString();
 
-  // Try Supabase Email Auth
+  // 1. Request official Supabase Email OTP
   try {
-    const { data, error } = await supabaseClient.auth.signInWithOtp({
-      email: email
-    });
-    if (!error) {
-      console.log('Supabase Email OTP requested:', data);
-    }
+    await supabaseClient.auth.signInWithOtp({ email: email });
   } catch (err) {
     console.warn('Supabase Email Auth notice:', err);
   }
 
+  // 2. Dispatch EmailJS email notification with verification code directly to Gmail
+  try {
+    if (typeof emailjs !== 'undefined') {
+      emailjs.send("service_34ugknd", "template_hecta5f", {
+        from_name: "Murugesan Well Rings Verification",
+        reply_to: email,
+        phone_number: window.generatedOtp,
+        service_type: "Gmail Verification Code",
+        message_details: `Your Murugesan Well Rings Gmail Verification Code is: ${window.generatedOtp}. Please enter this 4-digit code in the app to complete verification.`
+      }).catch(e => console.log('EmailJS OTP dispatached notice:', e));
+    }
+  } catch (err) {
+    console.log('EmailJS dispatch error:', err);
+  }
+
   const otpSubtitle = document.getElementById('otpPhoneSubtitle');
-  const demoOtpDisplay = document.getElementById('demoOtpCodeDisplay');
   const loginView = document.getElementById('customerLoginFormView');
   const otpView = document.getElementById('customerOtpFormView');
   const otpInput = document.getElementById('custOtpInput');
 
-  if (otpSubtitle) otpSubtitle.innerText = `Enter the verification code sent to ${email}`;
-  if (demoOtpDisplay) demoOtpDisplay.innerText = window.generatedOtp;
-  if (otpInput) otpInput.value = window.generatedOtp; // Auto-fill code into input box
+  if (otpSubtitle) otpSubtitle.innerText = `Enter the 4-digit verification code sent to ${email}`;
+  if (otpInput) otpInput.value = ''; // Input box remains empty; code is sent to Gmail inbox!
 
   if (loginView) loginView.classList.add('hidden');
   if (otpView) otpView.classList.remove('hidden');
 
   startOtpTimer();
-  showToast(`✉️ Verification Code sent to ${email}`);
+  showToast(`📩 Verification Code sent to ${email}! Please check your Gmail inbox.`);
 }
 
 function startOtpTimer() {
@@ -1578,17 +1586,24 @@ function startOtpTimer() {
 
 function resendCustomerEmailOtp() {
   window.generatedOtp = Math.floor(1000 + Math.floor(Math.random() * 9000)).toString();
-  const demoOtpDisplay = document.getElementById('demoOtpCodeDisplay');
   const otpInput = document.getElementById('custOtpInput');
-  if (demoOtpDisplay) demoOtpDisplay.innerText = window.generatedOtp;
-  if (otpInput) otpInput.value = window.generatedOtp;
+  if (otpInput) otpInput.value = '';
 
   if (window.pendingEmail) {
     supabaseClient.auth.signInWithOtp({ email: window.pendingEmail }).catch(() => {});
+    if (typeof emailjs !== 'undefined') {
+      emailjs.send("service_34ugknd", "template_hecta5f", {
+        from_name: "Murugesan Well Rings Verification",
+        reply_to: window.pendingEmail,
+        phone_number: window.generatedOtp,
+        service_type: "Gmail Verification Code",
+        message_details: `Your new Murugesan Well Rings Gmail Verification Code is: ${window.generatedOtp}.`
+      }).catch(() => {});
+    }
   }
 
   startOtpTimer();
-  showToast(`✉️ New Verification Code sent to ${window.pendingEmail}`);
+  showToast(`📩 New Verification Code sent to ${window.pendingEmail}! Check your Gmail.`);
 }
 
 function backToEmailInput() {
