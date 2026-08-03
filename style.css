@@ -202,6 +202,10 @@ body {
   border-radius: 10px;
 }
 
+.mobile-only-theme {
+  display: none !important;
+}
+
 .header-actions {
   display: flex;
   align-items: center;
@@ -1331,12 +1335,20 @@ body {
     width: 100%;
   }
 
+  .theme-toggle-btn {
+    display: none !important;
+  }
+
+  .mobile-only-theme {
+    display: flex !important;
+  }
+
   .logo-area {
     display: flex;
     align-items: center;
     gap: 6px;
-    flex: 1 1 auto;
-    min-width: 0;
+    flex: 0 1 auto;
+    max-width: 58%;
     overflow: hidden;
   }
 
@@ -1360,7 +1372,7 @@ body {
     flex: 0 0 auto;
   }
 
-  .customer-auth-btn, .cart-toggle-btn, .theme-toggle-btn, .mobile-menu-btn {
+  .customer-auth-btn, .cart-toggle-btn, .mobile-menu-btn {
     width: 34px;
     height: 34px;
     min-width: 34px;
@@ -1625,7 +1637,7 @@ body {
     gap: 3px;
   }
 
-  .customer-auth-btn, .cart-toggle-btn, .theme-toggle-btn, .mobile-menu-btn {
+  .customer-auth-btn, .cart-toggle-btn, .mobile-menu-btn {
     width: 32px;
     height: 32px;
     min-width: 32px;
