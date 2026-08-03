@@ -1323,6 +1323,50 @@ body {
     padding: 0 16px;
   }
 
+  .nav-container {
+    height: 62px;
+  }
+
+  .logo-area {
+    gap: 8px;
+  }
+
+  .site-logo {
+    height: 38px;
+    width: 38px;
+  }
+
+  .logo-text {
+    font-size: 1.02rem;
+    white-space: nowrap;
+  }
+
+  .header-actions {
+    gap: 6px;
+  }
+
+  .customer-auth-btn, .cart-toggle-btn, .theme-toggle-btn, .mobile-menu-btn {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 50%;
+    justify-content: center;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+  }
+
+  .customer-auth-btn .auth-btn-text {
+    display: none;
+  }
+
+  .cart-toggle-btn .cart-badge {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    padding: 2px 5px;
+    font-size: 0.62rem;
+  }
+
   /* Navigation */
   .mobile-menu-btn {
     display: flex;
@@ -1539,23 +1583,35 @@ body {
 /* ── Mobile Portrait (max-width: 480px) ── */
 @media (max-width: 480px) {
   .container {
-    padding: 0 12px;
+    padding: 0 10px;
   }
 
   .nav-container {
-    height: 64px;
+    height: 58px;
   }
 
   .nav-menu {
-    top: 64px;
+    top: 0;
   }
 
   .site-logo {
-    height: 36px;
+    height: 34px;
+    width: 34px;
   }
 
   .logo-text {
-    font-size: 1.1rem;
+    font-size: 0.92rem;
+    white-space: nowrap;
+  }
+
+  .header-actions {
+    gap: 4px;
+  }
+
+  .customer-auth-btn, .cart-toggle-btn, .theme-toggle-btn, .mobile-menu-btn {
+    width: 34px;
+    height: 34px;
+    font-size: 0.8rem;
   }
 
   /* Hero */
