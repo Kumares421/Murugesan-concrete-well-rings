@@ -1335,7 +1335,7 @@ body {
     width: 100%;
   }
 
-  .theme-toggle-btn {
+  #themeToggle, .theme-toggle-btn {
     display: none !important;
   }
 
