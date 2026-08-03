@@ -19,47 +19,12 @@ const AUTHORIZED_EMAILS = [
 })();
 
 // ============================================================
-// Theme Toggle Logic (Default: Light Theme)
+// Default Light Theme Initialization
 // ============================================================
-const themeToggleBtn = document.getElementById('themeToggle');
+document.documentElement.removeAttribute('data-theme');
+localStorage.removeItem('theme');
 const siteLogo = document.querySelector('.site-logo');
-
-// Set light theme as primary default theme
-let currentTheme = localStorage.getItem('theme');
-if (!currentTheme) {
-  currentTheme = 'light';
-  localStorage.setItem('theme', 'light');
-}
-
-if (currentTheme === 'dark') {
-  document.documentElement.setAttribute('data-theme', 'dark');
-  if (themeToggleBtn) themeToggleBtn.querySelector('i').className = 'fas fa-sun';
-  if (siteLogo) siteLogo.src = 'logo-dark.png';
-} else {
-  document.documentElement.removeAttribute('data-theme');
-  if (themeToggleBtn) themeToggleBtn.querySelector('i').className = 'fas fa-moon';
-  if (siteLogo) siteLogo.src = 'logo.png';
-}
-
-if (themeToggleBtn) {
-  themeToggleBtn.addEventListener('click', () => {
-    let theme = 'light';
-    const icon = themeToggleBtn.querySelector('i');
-
-    if (document.documentElement.getAttribute('data-theme') !== 'dark') {
-      document.documentElement.setAttribute('data-theme', 'dark');
-      theme = 'dark';
-      icon.className = 'fas fa-sun';
-      if (siteLogo) siteLogo.src = 'logo-dark.png';
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-      icon.className = 'fas fa-moon';
-      if (siteLogo) siteLogo.src = 'logo.png';
-    }
-
-    localStorage.setItem('theme', theme);
-  });
-}
+if (siteLogo) siteLogo.src = 'logo.png';
 
 // ============================================================
 // Mobile Navigation Toggle & Backdrop
