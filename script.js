@@ -1445,17 +1445,22 @@ function initCustomerSession() {
 }
 
 function updateCustomerHeaderUI() {
-  const authText = document.getElementById('customerAuthText');
   const authBtn = document.getElementById('customerAuthBtn');
-  if (!authText || !authBtn) return;
+  const authIcon = document.getElementById('customerAuthIcon');
+  const authText = document.getElementById('customerAuthText');
+  if (!authBtn) return;
 
   if (customerSession && (customerSession.email || customerSession.phone)) {
-    const userLabel = customerSession.email || customerSession.phone;
-    authText.innerHTML = `<i class="fas fa-check-circle" style="color: #22c55e;"></i> ${userLabel}`;
+    const userLabel = customerSession.name || customerSession.email || customerSession.phone;
+    if (authIcon) authIcon.className = 'fas fa-user-check';
+    if (authText) authText.innerText = userLabel;
     authBtn.classList.add('logged-in');
+    authBtn.title = `Logged in: ${userLabel}`;
   } else {
-    authText.innerText = 'Gmail Login';
+    if (authIcon) authIcon.className = 'fas fa-user-circle';
+    if (authText) authText.innerText = 'Login';
     authBtn.classList.remove('logged-in');
+    authBtn.title = 'Customer Login';
   }
 }
 
