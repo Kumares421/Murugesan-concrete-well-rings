@@ -1544,13 +1544,13 @@ async function requestCustomerEmailOtp(e) {
 
   if (otpSubtitle) otpSubtitle.innerText = `Enter the verification code sent to ${email}`;
   if (demoOtpDisplay) demoOtpDisplay.innerText = window.generatedOtp;
-  if (otpInput) otpInput.value = '';
+  if (otpInput) otpInput.value = window.generatedOtp; // Auto-fill code into input box
 
   if (loginView) loginView.classList.add('hidden');
   if (otpView) otpView.classList.remove('hidden');
 
   startOtpTimer();
-  showToast(`✉️ Gmail Verification Code sent to ${email}: ${window.generatedOtp}`);
+  showToast(`✉️ Verification Code sent to ${email}`);
 }
 
 function startOtpTimer() {
@@ -1574,14 +1574,16 @@ function startOtpTimer() {
 function resendCustomerEmailOtp() {
   window.generatedOtp = Math.floor(1000 + Math.floor(Math.random() * 9000)).toString();
   const demoOtpDisplay = document.getElementById('demoOtpCodeDisplay');
+  const otpInput = document.getElementById('custOtpInput');
   if (demoOtpDisplay) demoOtpDisplay.innerText = window.generatedOtp;
+  if (otpInput) otpInput.value = window.generatedOtp;
 
   if (window.pendingEmail) {
     supabaseClient.auth.signInWithOtp({ email: window.pendingEmail }).catch(() => {});
   }
 
   startOtpTimer();
-  showToast(`✉️ New Gmail Verification Code sent to ${window.pendingEmail}: ${window.generatedOtp}`);
+  showToast(`✉️ New Verification Code sent to ${window.pendingEmail}`);
 }
 
 function backToEmailInput() {
