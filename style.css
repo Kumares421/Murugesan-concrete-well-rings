@@ -1338,7 +1338,7 @@ body {
     justify-content: space-between;
     align-items: center;
     width: 100%;
-    gap: 12px;
+    gap: 16px;
   }
 
   .mobile-only-theme, #themeToggle, .theme-toggle-btn {
@@ -1351,19 +1351,23 @@ body {
     gap: 8px;
     flex: 0 1 auto;
     min-width: 0;
+    max-width: calc(100% - 170px);
+    margin-right: 16px;
   }
 
   .site-logo {
-    height: 40px;
-    width: 40px;
+    height: 38px;
+    width: 38px;
     flex-shrink: 0;
   }
 
   .logo-text {
-    font-size: 1.15rem;
+    font-size: 1.05rem;
     font-weight: 800;
     white-space: nowrap;
     min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .header-actions {
@@ -1372,6 +1376,7 @@ body {
     gap: 8px;
     flex: 0 0 auto;
     margin-left: auto;
+    padding-left: 8px;
   }
 
   .customer-auth-btn, .cart-toggle-btn, .mobile-menu-btn {
@@ -1631,7 +1636,8 @@ body {
 
   .logo-area {
     gap: 6px;
-    max-width: calc(100% - 130px);
+    max-width: calc(100% - 140px);
+    margin-right: 12px;
     overflow: hidden;
   }
 
