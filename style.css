@@ -1630,31 +1630,36 @@ body {
   }
 
   .logo-area {
-    gap: 4px;
-    max-width: calc(100% - 110px);
+    gap: 6px;
+    max-width: calc(100% - 130px);
+    overflow: hidden;
   }
 
   .site-logo {
-    height: 30px;
-    width: 30px;
+    height: 32px;
+    width: 32px;
+    flex-shrink: 0;
   }
 
   .logo-text {
-    font-size: 0.82rem;
+    font-size: 0.85rem;
     letter-spacing: -0.3px;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .header-actions {
-    gap: 3px;
+    gap: 5px;
+    flex-shrink: 0;
   }
 
   .customer-auth-btn, .cart-toggle-btn, .mobile-menu-btn {
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
-    max-width: 32px !important;
-    font-size: 0.8rem !important;
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    font-size: 0.82rem !important;
   }
 }
 
