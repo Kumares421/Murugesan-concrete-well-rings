@@ -2009,7 +2009,7 @@ function sendCartOrderWhatsApp() {
   text += `--------------------------------\n`;
   text += `Please confirm dispatch schedule and driver contact!`;
 
-  const waUrl = `https://wa.me/918838135069?text=${encodeURIComponent(text)}`;
+  const waUrl = `https://wa.me/919941595850?text=${encodeURIComponent(text)}`;
   window.open(waUrl, '_blank');
 }
 
