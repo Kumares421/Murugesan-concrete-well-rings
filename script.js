@@ -1494,11 +1494,14 @@ async function requestCustomerEmailOtp(e) {
   // Generate dynamic 4-digit verification code
   window.generatedOtp = Math.floor(1000 + Math.floor(Math.random() * 9000)).toString();
 
-  // 1. Request official Supabase Email OTP
+  // 1. Request Supabase Email OTP (sends 6-digit code after dashboard is configured)
   try {
-    await supabaseClient.auth.signInWithOtp({ email: email });
+    await supabaseClient.auth.signInWithOtp({
+      email: email,
+      options: { shouldCreateUser: true }
+    });
   } catch (err) {
-    console.warn('Supabase Email Auth notice:', err);
+    console.warn('Supabase OTP notice:', err);
   }
 
   // 2. Dispatch EmailJS email notification with verification code directly to Gmail
@@ -1565,7 +1568,7 @@ function resendCustomerEmailOtp() {
 
   if (window.pendingEmail) {
     const otpCode = window.generatedOtp;
-    supabaseClient.auth.signInWithOtp({ email: window.pendingEmail }).catch(() => {});
+    supabaseClient.auth.signInWithOtp({ email: window.pendingEmail, options: { shouldCreateUser: true } }).catch(() => {});
     if (typeof emailjs !== 'undefined') {
       emailjs.send("service_34ugknd", "template_hecta5f", {
         to_name: window.pendingName || window.pendingEmail.split('@')[0],
